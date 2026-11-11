@@ -1,0 +1,50 @@
+# Local stack: PostgreSQL (persistent volume) + Redis + API. Secrets come from a git-ignored .env (see .env.example).
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: sb24
+      POSTGRES_USER: sb24
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sb24"]
+      interval: 5s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "volatile-ttl"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping | grep PONG"]
+      interval: 5s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+  api:
+    build: .
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/sb24
+      DB_USER: sb24
+      DB_PASSWORD: ${DB_PASSWORD}
+      APP_REDIS_ENABLED: "true"
+      APP_REDIS_URI: redis://:${REDIS_PASSWORD}@redis:6379
+      APP_SECURITY_DATA_KEY: ${APP_SECURITY_DATA_KEY:?set APP_SECURITY_DATA_KEY in .env}
+      APP_SECURITY_JWT_KEY_PASSPHRASE: ${APP_SECURITY_JWT_KEY_PASSPHRASE:?set APP_SECURITY_JWT_KEY_PASSPHRASE in .env}
+      APP_SECURITY_JWT_KEY_PATH: /keys/jwt-key.enc
+      APP_ADMIN_BOOTSTRAP_EMAIL: ${APP_ADMIN_BOOTSTRAP_EMAIL:-}
+      APP_ADMIN_BOOTSTRAP_PASSWORD: ${APP_ADMIN_BOOTSTRAP_PASSWORD:-}   # creates the first SUPER_ADMIN if none exists; remove afterwards
+      APP_SECURITY_ALLOW_KEY_GENERATION: "true"   # first start creates the encrypted key in the volume; set false once provisioned
+    volumes: ["jwtkeys:/keys"]
+    ports: ["127.0.0.1:8080:8080"]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+volumes:
+  pgdata:
+  redisdata:
+  jwtkeys:

@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    # file-based H2: data survives restarts (./data is git-ignored)
+    url: jdbc:h2:file:./data/sb24;MODE=PostgreSQL
+    username: sa
+    password: ""
+app:
+  security:
+    # DEV ONLY defaults. Production must inject real values through the environment.
+    jwt-key-path: ${APP_SECURITY_JWT_KEY_PATH:./data/jwt-key.enc}
+    jwt-key-passphrase: ${APP_SECURITY_JWT_KEY_PASSPHRASE:dev-only-passphrase-change-me}
+    allow-key-generation: true
+    data-key: ${APP_SECURITY_DATA_KEY:ZGV2LW9ubHkta2V5LWRldi1vbmx5LWtleS0wMTIzNDU=}
+    docs-enabled: true
+    allowed-origins: ["http://localhost:3000"]

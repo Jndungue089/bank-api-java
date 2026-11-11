@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+server:
+  forward-headers-strategy: none
+app:
+  security:
+    docs-enabled: false
+    allow-key-generation: ${APP_SECURITY_ALLOW_KEY_GENERATION:false}
+  redis:
+    enabled: ${APP_REDIS_ENABLED:true}

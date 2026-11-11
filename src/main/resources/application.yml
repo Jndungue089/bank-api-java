@@ -1,0 +1,99 @@
+spring:
+  application:
+    name: sb24-api
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  jackson:
+    default-property-inclusion: non_null
+    deserialization:
+      fail-on-unknown-properties: true      # strict contract: unexpected fields are an error (mass-assignment defence)
+      fail-on-null-for-primitives: true
+      fail-on-trailing-tokens: true
+      use-big-decimal-for-floats: true      # money is never parsed through double
+    parser:
+      strict-duplicate-detection: true      # {"amount":1,"amount":999} is rejected
+    mapper:
+      allow-coercion-of-scalars: false      # "10.00" (string) is not accepted where a number is expected
+server:
+  error:
+    include-stacktrace: never
+    include-message: never
+  shutdown: graceful
+  tomcat:
+    max-http-form-post-size: 10KB
+    max-swallow-size: 64KB
+  max-http-request-header-size: 16KB
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+springdoc:
+  api-docs:
+    enabled: ${app.security.docs-enabled:false}
+  swagger-ui:
+    enabled: ${app.security.docs-enabled:false}
+
+app:
+  security:
+    jwt-key-path: ${APP_SECURITY_JWT_KEY_PATH:}
+    jwt-key-passphrase: ${APP_SECURITY_JWT_KEY_PASSPHRASE:}   # >= 16 chars, stretched with PBKDF2 to protect the key at rest
+    allow-key-generation: false
+    data-key: ${APP_SECURITY_DATA_KEY:}                       # base64, 32 bytes: openssl rand -base64 32
+    access-ttl: 10m
+    refresh-ttl: 7d
+    max-failed-logins: 5
+    lock-duration: 15m
+    allowed-origins: []
+    trust-forward-headers: false
+    docs-enabled: false
+  rate-limit:
+    enabled: true
+    ip-global:  { capacity: 300, period: 1m }
+    auth:       { capacity: 10,  period: 1m }
+    money:      { capacity: 12,  period: 1m }
+    general:    { capacity: 120, period: 1m }
+    soft-throttle-percent: 25
+    soft-throttle-delay-ms: 150
+  banking:
+    bank-code: "9944"        # fictional code, this is a simulation
+    branch-code: "0001"
+    per-transaction-limit: 2000000.00
+    daily-limit: 5000000.00
+    interbank-fee-rate: 0.001
+    interbank-fee-min: 50.00
+    max-concurrent-per-user: 2
+    max-global-money-concurrency: 200
+    # ABAC thresholds
+    new-beneficiary-limit: 100000.00        # max per transfer to a beneficiary added less than cooling-off ago
+    new-beneficiary-cooling-off: 24h
+    high-value-threshold: 500000.00         # transfers at/above this need a device the customer already logged in from
+    max-beneficiaries: 50
+  redis:
+    enabled: false           # true => distributed rate limits, JWT denylist and cron locks in Redis
+    uri: ${APP_REDIS_URI:redis://localhost:6379}
+  jobs:
+    enabled: true
+    purge-tokens-cron: "0 15 * * * *"        # hourly
+    purge-idempotency-cron: "0 10 3 * * *"   # 03:10 daily
+    ledger-integrity-cron: "0 0 2 * * *"     # 02:00 daily
+    reconciliation-cron: "0 0 0 * * *"       # 00:00 Africa/Luanda: reconciles the day that just closed
+    interest-cron: "0 15 0 * * *"            # 00:15 Africa/Luanda: daily savings interest accrual
+    idempotency-retention: 48h
+  queue:
+    enabled: true            # polling worker; false in tests (they drive the worker explicitly)
+    poll-interval-ms: 1000
+    batch-size: 20
+    max-attempts: 5
+    backoff-base-ms: 5000    # retry delay = base * 2^(attempt-1), capped at 5 min
+    lease: 2m                # a worker that dies mid-message loses its claim after this
+  admin:
+    bootstrap-email: ${APP_ADMIN_BOOTSTRAP_EMAIL:}
+    bootstrap-password: ${APP_ADMIN_BOOTSTRAP_PASSWORD:}

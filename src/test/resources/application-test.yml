@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:sb24test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+app:
+  security:
+    jwt-key-path: ""            # ephemeral in-memory key
+    jwt-key-passphrase: test-passphrase-1234
+    allow-key-generation: true
+    data-key: dGVzdC1rZXktdGVzdC1rZXktdGVzdC1rZXktMDEyMzQ=
+    max-failed-logins: 3
+    docs-enabled: false
+  rate-limit:
+    ip-global: { capacity: 1000, period: 1m }
+    auth:      { capacity: 8,    period: 1m }
+    money:     { capacity: 6,    period: 1m }
+    general:   { capacity: 500,  period: 1m }
+    soft-throttle-percent: 0
+    soft-throttle-delay-ms: 0
+  queue:
+    enabled: false
+    backoff-base-ms: 0
